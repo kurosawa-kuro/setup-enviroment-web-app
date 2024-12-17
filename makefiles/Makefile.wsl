@@ -1,0 +1,13 @@
+# WSL Ubuntu用のターゲット
+.PHONY: setup-wsl install-wsl install-docker-wsl install-nodejs-wsl
+
+setup-wsl: chmod-scripts setup-swap install-wsl
+
+install-wsl: chmod-scripts
+	@./script/setup-lib-wsl-ubuntu.sh nodejs
+
+install-docker-wsl: chmod-scripts
+	@./script/setup-lib-wsl-ubuntu.sh docker
+
+install-nodejs-wsl: chmod-scripts
+	@./script/setup-lib-wsl-ubuntu.sh nodejs 
