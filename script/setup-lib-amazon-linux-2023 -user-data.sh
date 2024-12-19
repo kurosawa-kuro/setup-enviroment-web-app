@@ -59,16 +59,16 @@ tar -C /usr/local -xzf "go$1.22.0.linux-amd64.tar.gz"
 rm "go1.22.0.linux-amd64.tar.gz"
 
 # # PATH設定
-# if ! grep -q "/usr/local/go/bin" /home/ec2-user/.bashrc; then
-#     echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/ec2-user/.bashrc
-#     echo 'export GOPATH=$HOME/go' >> /home/ec2-user/.bashrc
-#     echo 'export PATH=$PATH:$GOPATH/bin' >> /home/ec2-user/.bashrc
-# fi
+if ! grep -q "/usr/local/go/bin" /home/ec2-user/.bashrc; then
+     echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/ec2-user/.bashrc
+     echo 'export GOPATH=$HOME/go' >> /home/ec2-user/.bashrc
+     echo 'export PATH=$PATH:$GOPATH/bin' >> /home/ec2-user/.bashrc
+fi
 
 # # GOROOTとGOPATHの設定
-# export GOROOT=/usr/local/go
-# export GOPATH=$HOME/go
-# export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+export GOROOT=/usr/local/go
+export GOPATH=$HOME/go
+export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 
 # バージョン確認
 echo "Checking installed versions..."
