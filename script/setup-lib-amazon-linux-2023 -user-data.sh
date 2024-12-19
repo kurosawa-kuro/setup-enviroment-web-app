@@ -49,6 +49,9 @@ chmod +x /usr/local/bin/docker-compose
 # ec2-userをdockerグループに追加
 usermod -a -G docker ec2-user
 
+# nodejsのインストール
+# sudo dnf install -y nodejs npm
+
 # バージョン確認
 echo "Checking installed versions..."
 echo "System packages updated: $(date)"
