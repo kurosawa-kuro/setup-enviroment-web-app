@@ -23,11 +23,11 @@ dnf install -y \
     openssl-devel
 
 # AWS CLIのインストール
-echo "Installing AWS CLI..."
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-./aws/install
-rm -rf aws awscliv2.zip
+# echo "Installing AWS CLI..."
+# curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+# unzip awscliv2.zip
+# ./aws/install
+# rm -rf aws awscliv2.zip
 
 # Ansibleのインストール
 echo "Installing Ansible..."
