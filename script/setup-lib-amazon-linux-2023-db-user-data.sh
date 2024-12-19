@@ -106,50 +106,53 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
 fi
 
 # pgAdminのインストール
+# pgAdminのインストール
 if [ "$INSTALL_PGADMIN" = true ]; then
     if ! rpm -q pgadmin4-web &>/dev/null; then
         echo "Installing pgAdmin..."
         
-        # EPEL 9リポジトリの追加
-        if ! rpm -q epel-release &>/dev/null; then
-            dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-        fi
-        
-        # PowerToolsリポジトリの有効化（必要な依存関係のため）
+        # 必要なリポジトリの有効化
+        dnf install -y dnf-utils
         dnf config-manager --set-enabled crb
-        
-        # Apacheとmod_wsgiのインストール
-        if ! rpm -q httpd &>/dev/null; then
-            echo "Installing Apache and mod_wsgi..."
-            dnf install -y httpd python3-mod_wsgi
-        fi
-        
-        # pgAdmin4のインストール
-        dnf install -y python3-pip
-        pip3 install pgadmin4
-        
-        # pgAdmin4の設定
-        mkdir -p /var/lib/pgadmin
-        mkdir -p /var/log/pgadmin
-        chown -R apache:apache /var/lib/pgadmin
-        chown -R apache:apache /var/log/pgadmin
+
+        # 必要なパッケージのインストール
+        dnf install -y python3-pip httpd python3-mod_wsgi
+
+        # PostgreSQLリポジトリからpgAdmin4をインストール
+        dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+        dnf -qy module disable postgresql
+        dnf install -y pgadmin4-web
         
         # Apacheの設定
-        cat > /etc/httpd/conf.d/pgadmin4.conf << 'EOL'
-WSGIDaemonProcess pgadmin processes=1 threads=25 python-path=/usr/local/lib/python3.9/site-packages
-WSGIScriptAlias /pgadmin4 /usr/local/lib/python3.9/site-packages/pgadmin4/pgAdmin4.wsgi
+        if [ ! -f "/etc/httpd/conf.d/pgadmin4.conf" ]; then
+            cat > /etc/httpd/conf.d/pgadmin4.conf << 'EOL'
+LoadModule wsgi_module modules/mod_wsgi.so
+WSGIDaemonProcess pgadmin processes=1 threads=25
+WSGIScriptAlias /pgadmin4 /usr/lib/python3.9/site-packages/pgadmin4/pgAdmin4.wsgi
 
-<Directory /usr/local/lib/python3.9/site-packages/pgadmin4>
+<Directory /usr/lib/python3.9/site-packages/pgadmin4>
     WSGIProcessGroup pgadmin
     WSGIApplicationGroup %{GLOBAL}
     Require all granted
 </Directory>
 EOL
-        
+        fi
+
         # SELinuxの設定
         setsebool -P httpd_can_network_connect on
-        
-        # Apacheの再起動
+
+        # 必要なディレクトリの作成と権限設定
+        mkdir -p /var/lib/pgadmin
+        mkdir -p /var/log/pgadmin
+        chown -R apache:apache /var/lib/pgadmin
+        chown -R apache:apache /var/log/pgadmin
+
+        # pgAdmin4の初期セットアップ
+        if [ ! -f "/var/lib/pgadmin/pgadmin4.db" ]; then
+            python3 /usr/lib/python3.9/site-packages/pgadmin4-web/setup.py
+        fi
+
+        # Apacheの起動
         systemctl enable httpd
         systemctl restart httpd
         
