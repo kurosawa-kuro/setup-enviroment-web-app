@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Configuration flags
+#=========================================
+# 設定と定数
+#=========================================
+# インストール設定
 declare -A INSTALL_FLAGS=(
     [SYSTEM_UPDATES]=false
     [DEV_TOOLS]=true
@@ -12,102 +15,83 @@ declare -A INSTALL_FLAGS=(
     [POSTGRESQL]=true
 )
 
-# Database configuration
+# データベース設定
 declare -A DB_CONFIG=(
     [DB]=dev_db
     [USER]=postgres
     [PASSWORD]=postgres
 )
 
-# Global constants
+# グローバル定数
 readonly SWAP_SIZE="4096"
 readonly DOCKER_COMPOSE_VERSION="v2.21.0"
 readonly GO_VERSION="1.22.0"
 
-# エラーハンドリングの設定
+# インストール情報保持用
+declare -A INSTALL_INFO
+
+#=========================================
+# 基本ユーティリティ
+#=========================================
 set -euo pipefail
 trap 'error_handler $? $LINENO $BASH_LINENO "$BASH_COMMAND" $(printf "::%s" ${FUNCNAME[@]:-})' ERR
 
-# ユーティリティ関数
-log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
-}
-
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"; }
 error_handler() {
-    local exit_code=$1
-    local line_no=$2
-    local bash_lineno=$3
-    local last_command=$4
-    local func_trace=$5
-    log "Error occurred in ${func_trace} at line ${line_no}"
-    log "Last command: ${last_command}"
-    log "Exit code: ${exit_code}"
+    log "Error occurred in ${5} at line ${2}"
+    log "Last command: ${4}"
+    log "Exit code: ${1}"
 }
+check_command() { command -v "$1" &>/dev/null; }
 
-check_command() {
-    command -v "$1" &>/dev/null
-}
-
-# Swap設定関数
+#=========================================
+# システム設定
+#=========================================
 setup_swap() {
     local swap_file="/swapfile"
-    
     log "Setting up swap file..."
-    if [[ "$EUID" -ne 0 ]]; then
-        log "Error: Root privileges required for swap setup"
-        return 1
-    fi
+    [[ "$EUID" -ne 0 ]] && { log "Error: Root privileges required"; return 1; }
 
     if [[ -f "$swap_file" ]]; then
-        log "Removing existing swap file..."
         swapoff "$swap_file" 2>/dev/null || true
         rm "$swap_file"
     fi
 
-    log "Creating ${SWAP_SIZE}MB swap file..."
     dd if=/dev/zero of="$swap_file" bs=1M count="$SWAP_SIZE" status=progress
     chmod 600 "$swap_file"
     mkswap "$swap_file"
     swapon "$swap_file"
-
-    if ! grep -q "$swap_file" /etc/fstab; then
-        echo "$swap_file none swap sw 0 0" >> /etc/fstab
-    fi
+    grep -q "$swap_file" /etc/fstab || echo "$swap_file none swap sw 0 0" >> /etc/fstab
 }
 
-# 開発ツールのインストール
+#=========================================
+# 開発ツール
+#=========================================
 install_dev_tools() {
     log "Installing development tools..."
-    if ! dnf group list installed "Development Tools" &>/dev/null; then
+    ! dnf group list installed "Development Tools" &>/dev/null && \
         dnf groupinstall "Development Tools" -y
-    fi
 
     local packages=("git" "make" "jq" "which" "python3-pip" "python3-devel" "libffi-devel" "openssl-devel")
     for pkg in "${packages[@]}"; do
-        if ! rpm -q "$pkg" &>/dev/null; then
-            dnf install -y "$pkg"
-        fi
+        ! rpm -q "$pkg" &>/dev/null && dnf install -y "$pkg"
     done
 }
 
-# PostgreSQLのインストール
+#=========================================
+# PostgreSQL
+#=========================================
 install_postgresql() {
-    if check_command psql; then
-        log "PostgreSQL is already installed"
-        return 0
-    fi
+    check_command psql && { log "PostgreSQL is already installed"; return 0; }
 
     log "Installing PostgreSQL..."
     dnf install -y postgresql15-server
-
-    if [[ ! -d "/var/lib/pgsql/data/base" ]]; then
+    [[ ! -d "/var/lib/pgsql/data/base" ]] && {
         postgresql-setup --initdb
         configure_postgresql
-    fi
-
+    }
     systemctl enable postgresql
     systemctl start postgresql
-
     setup_postgresql_db
 }
 
@@ -121,32 +105,23 @@ configure_postgresql() {
         sed -i 's/ident/md5/g' $pg_hba_conf
         echo 'host    all    all    0.0.0.0/0    md5' >> $pg_hba_conf
     "
-
     chown postgres:postgres $pg_hba_conf ${pg_hba_conf}.bak $postgresql_conf
     chmod 600 $pg_hba_conf ${pg_hba_conf}.bak $postgresql_conf
 }
 
 setup_postgresql_db() {
-    # postgresユーザーとしてコマンドを実行
     cd /var/lib/pgsql
     sudo -u postgres bash -c "
         psql -c \"ALTER USER postgres WITH PASSWORD '${DB_CONFIG[PASSWORD]}';\"
         createdb ${DB_CONFIG[DB]}
     "
-
-    log "PostgreSQLのインストールが完了しました"
-    log "Database: ${DB_CONFIG[DB]}"
-    log "User: ${DB_CONFIG[USER]}"
-    log "Password: ${DB_CONFIG[PASSWORD]}"
-    log "注意: セ��ュリティグループで5432ポートを開放してください"
 }
 
-# Dockerのインストール
+#=========================================
+# Docker
+#=========================================
 install_docker() {
-    if check_command docker; then
-        log "Docker is already installed"
-        return 0
-    fi
+    check_command docker && { log "Docker is already installed"; return 0; }
 
     log "Installing Docker..."
     dnf install -y docker
@@ -154,96 +129,109 @@ install_docker() {
     systemctl start docker
 
     if ! check_command docker-compose; then
-        log "Installing Docker Compose..."
-        curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
+            -o /usr/local/bin/docker-compose
         chmod +x /usr/local/bin/docker-compose
     fi
 
-    if ! groups ec2-user | grep -q docker; then
-        usermod -a -G docker ec2-user
-    fi
+    ! groups ec2-user | grep -q docker && usermod -a -G docker ec2-user
 }
 
-# NodeJSのインストール
+#=========================================
+# NodeJS
+#=========================================
 install_nodejs() {
-    if check_command node; then
-        log "NodeJS is already installed"
-        return 0
-    fi
+    check_command node && { log "NodeJS is already installed"; return 0; }
 
     log "Installing NodeJS..."
-    # Amazon Linux 2023用のNodeSourceリポジトリを追加
     curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
     dnf install -y nodejs
-
-    # npmの最新バージョンをインストール
     npm install -g npm@latest
 }
 
-# Go言語のインストール
+#=========================================
+# Go
+#=========================================
 install_go() {
-    if check_command go; then
-        log "Go is already installed"
-        return 0
-    fi
+    check_command go && { log "Go is already installed"; return 0; }
 
     log "Installing Go language..."
     local go_archive="go${GO_VERSION}.linux-amd64.tar.gz"
     
-    # 既存のGoインストールを削除
     rm -rf /usr/local/go
-    
-    # Goのダウンロードとインストール
     curl -LO "https://go.dev/dl/${go_archive}"
     tar -C /usr/local -xzf "${go_archive}"
     rm "${go_archive}"
     
-    # システム全体のPATH設定
-    if [ ! -f "/etc/profile.d/go.sh" ]; then
-        cat > /etc/profile.d/go.sh << 'EOL'
+    setup_go_environment
+}
+
+setup_go_environment() {
+    # システム全体の設定
+    cat > /etc/profile.d/go.sh << 'EOL'
 export GOROOT=/usr/local/go
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 EOL
-        chmod 644 /etc/profile.d/go.sh
-    fi
-    
-    # ec2-userのPATH設定
-    if ! grep -q "GOROOT" /home/ec2-user/.bashrc; then
+    chmod 644 /etc/profile.d/go.sh
+
+    # ユーザー設定
+    ! grep -q "GOROOT" /home/ec2-user/.bashrc && {
         cat >> /home/ec2-user/.bashrc << 'EOL'
 export GOROOT=/usr/local/go
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 EOL
-    fi
-    
-    # 権限の設定
+    }
+
+    # 権限設定
     chown -R root:root /usr/local/go
     mkdir -p /home/ec2-user/go
     chown -R ec2-user:ec2-user /home/ec2-user/go
-    
-    log "Go言語のインストールが完了しました"
-    log "Version: $(go version)"
-    log "GOROOT: /usr/local/go"
-    log "GOPATH: /home/ec2-user/go"
-    log "注意: 新しいシェルを開くか、source /etc/profile.d/go.shを実行してください"
 }
 
-# インストール情報を保持する配列
-declare -A INSTALL_INFO
+#=========================================
+# バージョン確認
+#=========================================
+check_installed_versions() {
+    local commands=(
+        "git:${INSTALL_FLAGS[DEV_TOOLS]}"
+        "make:${INSTALL_FLAGS[DEV_TOOLS]}"
+        "docker:${INSTALL_FLAGS[DOCKER]}"
+        "docker-compose:${INSTALL_FLAGS[DOCKER]}"
+        "node:${INSTALL_FLAGS[NODEJS]}"
+        "psql:${INSTALL_FLAGS[POSTGRESQL]}"
+    )
 
-# メイン実行関数
+    for cmd_pair in "${commands[@]}"; do
+        IFS=: read -r cmd flag <<< "$cmd_pair"
+        [[ "$flag" = true ]] && check_command "$cmd" && {
+            case "$cmd" in
+                git) log "Git version: $(git --version)" ;;
+                make) log "Make version: $(make --version | head -n1)" ;;
+                docker) log "Docker version: $(docker --version)" ;;
+                docker-compose) log "Docker Compose version: $(docker-compose --version)" ;;
+                node) log "Node version: $(node -v)" ;;
+                psql) log "PostgreSQL version: $(psql --version)" ;;
+            esac
+        }
+    done
+}
+
+#=========================================
+# メイン処理
+#=========================================
 main() {
     log "Beginning setup..."
-
     setup_swap
 
-    if [[ "${INSTALL_FLAGS[DEV_TOOLS]}" = true ]]; then
+    # コンポーネントのインストール
+    [[ "${INSTALL_FLAGS[DEV_TOOLS]}" = true ]] && {
         install_dev_tools
         INSTALL_INFO[DEV_TOOLS]="開発ツール: インストール済み"
-    fi
+    }
 
-    if [[ "${INSTALL_FLAGS[POSTGRESQL]}" = true ]]; then
+    [[ "${INSTALL_FLAGS[POSTGRESQL]}" = true ]] && {
         install_postgresql
         INSTALL_INFO[POSTGRESQL]=$(cat << EOF
 PostgreSQL情報:
@@ -254,19 +242,19 @@ PostgreSQL情報:
 - 注意: セキュリティグループで5432ポートを開放してください
 EOF
 )
-    fi
+    }
 
-    if [[ "${INSTALL_FLAGS[DOCKER]}" = true ]]; then
+    [[ "${INSTALL_FLAGS[DOCKER]}" = true ]] && {
         install_docker
         INSTALL_INFO[DOCKER]="Docker: インストール済み"
-    fi
+    }
 
-    if [[ "${INSTALL_FLAGS[NODEJS]}" = true ]]; then
+    [[ "${INSTALL_FLAGS[NODEJS]}" = true ]] && {
         install_nodejs
         INSTALL_INFO[NODEJS]="NodeJS: インストール済み ($(node -v))"
-    fi
+    }
 
-    if [[ "${INSTALL_FLAGS[GO]}" = true ]]; then
+    [[ "${INSTALL_FLAGS[GO]}" = true ]] && {
         install_go
         INSTALL_INFO[GO]=$(cat << EOF
 Go言語情報:
@@ -276,12 +264,13 @@ Go言語情報:
 - 注意: 新しいシェルを開くか、source /etc/profile.d/go.shを実行してください
 EOF
 )
-    fi
+    }
 
+    # インストール結果の表示
     log "Installation complete. Checking versions..."
     check_installed_versions
 
-    # インストール情報のサマリーを表示
+    # 最終サマリー
     log "============================================"
     log "インストール完了サマリー"
     log "============================================"
@@ -296,31 +285,6 @@ EOF
     log "3. 環境変数を反映するには、新しいシェルを開くか、sourceコマンドを実行してください"
 }
 
-check_installed_versions() {
-    local commands=(
-        "git:${INSTALL_FLAGS[DEV_TOOLS]}"
-        "make:${INSTALL_FLAGS[DEV_TOOLS]}"
-        "docker:${INSTALL_FLAGS[DOCKER]}"
-        "docker-compose:${INSTALL_FLAGS[DOCKER]}"
-        "node:${INSTALL_FLAGS[NODEJS]}"
-        "psql:${INSTALL_FLAGS[POSTGRESQL]}"
-    )
-
-    for cmd_pair in "${commands[@]}"; do
-        IFS=: read -r cmd flag <<< "$cmd_pair"
-        if [[ "$flag" = true ]] && check_command "$cmd"; then
-            case "$cmd" in
-                git) log "Git version: $(git --version)" ;;
-                make) log "Make version: $(make --version | head -n1)" ;;
-                docker) log "Docker version: $(docker --version)" ;;
-                docker-compose) log "Docker Compose version: $(docker-compose --version)" ;;
-                node) log "Node version: $(node -v)" ;;
-                psql) log "PostgreSQL version: $(psql --version)" ;;
-            esac
-        fi
-    done
-}
-
 # スクリプトの実行
 main
-log "Setup completed successfully"
+log "Setup completed successfully" 
