@@ -52,24 +52,24 @@ usermod -a -G docker ec2-user
 sudo dnf install -y nodejs npm
 
 # Go言語のインストール
-echo "Installing Go language..."
-GO_VERSION="1.22.0"
-wget "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-rm -rf /usr/local/go
-tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
-rm "go${GO_VERSION}.linux-amd64.tar.gz"
+# echo "Installing Go language..."
+# GO_VERSION="1.22.0"
+# wget "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+# rm -rf /usr/local/go
+# tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
+# rm "go${GO_VERSION}.linux-amd64.tar.gz"
 
-# PATH設定
-if ! grep -q "/usr/local/go/bin" /home/ec2-user/.bashrc; then
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/ec2-user/.bashrc
-    echo 'export GOPATH=$HOME/go' >> /home/ec2-user/.bashrc
-    echo 'export PATH=$PATH:$GOPATH/bin' >> /home/ec2-user/.bashrc
-fi
+# # PATH設定
+# if ! grep -q "/usr/local/go/bin" /home/ec2-user/.bashrc; then
+#     echo 'export PATH=$PATH:/usr/local/go/bin' >> /home/ec2-user/.bashrc
+#     echo 'export GOPATH=$HOME/go' >> /home/ec2-user/.bashrc
+#     echo 'export PATH=$PATH:$GOPATH/bin' >> /home/ec2-user/.bashrc
+# fi
 
-# GOROOTとGOPATHの設定
-export GOROOT=/usr/local/go
-export GOPATH=$HOME/go
-export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+# # GOROOTとGOPATHの設定
+# export GOROOT=/usr/local/go
+# export GOPATH=$HOME/go
+# export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
 
 # バージョン確認
 echo "Checking installed versions..."
