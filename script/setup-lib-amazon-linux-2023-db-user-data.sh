@@ -75,7 +75,7 @@ EOF
         
         # PostgreSQLの初期化（データディレクトリが存在しない場合のみ）
         if [ ! -d "/var/lib/pgsql/15/data/base" ]; then
-            /usr/pgsql-15/bin/postgresql-15-setup initdb
+            postgresql15-setup initdb
             
             # PostgreSQL設定の変更
             PG_HBA_CONF="/var/lib/pgsql/15/data/pg_hba.conf"
