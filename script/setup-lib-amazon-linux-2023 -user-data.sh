@@ -31,7 +31,6 @@ dnf install -y \
 
 # Ansibleのインストール
 echo "Installing Ansible..."
-# python3 -m pip install --upgrade pip
 python3 -m pip install ansible
 
 # Dockerのインストール
