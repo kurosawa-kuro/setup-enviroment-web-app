@@ -129,12 +129,24 @@ install_docker() {
     systemctl start docker
 
     if ! check_command docker-compose; then
+        log "Installing Docker Compose..."
         curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
             -o /usr/local/bin/docker-compose
         chmod +x /usr/local/bin/docker-compose
     fi
 
     ! groups ec2-user | grep -q docker && usermod -a -G docker ec2-user
+
+    INSTALL_INFO[DOCKER]=$(cat << EOF
+Docker情報:
+- Docker Version: $(docker --version)
+- Docker Compose Version: $(docker-compose --version)
+- Docker Service: $(systemctl is-active docker)
+- Docker Socket: /var/run/docker.sock
+- Docker Group: docker (ec2-user added)
+- 注意: 新しいシェルを開くとdockerコマンドがsudoなしで実行可能になります
+EOF
+)
 }
 
 #=========================================
@@ -246,7 +258,7 @@ EOF
 
     [[ "${INSTALL_FLAGS[DOCKER]}" = true ]] && {
         install_docker
-        INSTALL_INFO[DOCKER]="Docker: インストール済み"
+        # install_docker関数内で既にINSTALL_INFOを設定しているため、ここでは何もしない
     }
 
     [[ "${INSTALL_FLAGS[NODEJS]}" = true ]] && {
