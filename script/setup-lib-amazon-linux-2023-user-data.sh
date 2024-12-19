@@ -6,7 +6,7 @@ INSTALL_DEV_TOOLS=true
 INSTALL_AWS_CLI=false
 INSTALL_ANSIBLE=false
 INSTALL_DOCKER=false
-INSTALL_NODEJS=false
+INSTALL_NODEJS=true
 INSTALL_GO=false
 
 # エラー発生時にスクリプトを停止
