@@ -20,41 +20,7 @@ DATABASE_PASSWORD=postgres
 set -e
 echo "Begin: User data script execution - $(date)"
 
-# システムアップデート
-if [ "$INSTALL_SYSTEM_UPDATES" = true ]; then
-    echo "Checking for system updates..."
-    dnf check-update > /dev/null 2>&1 || UPDATE_NEEDED=$?
-    if [ "$UPDATE_NEEDED" == "100" ]; then
-        echo "Updates available. Updating system packages..."
-        dnf update -y
-    else
-        echo "System is up to date."
-    fi
-fi
 
-# 開発ツールとその他の必要なパッケージのインストール
-if [ "$INSTALL_DEV_TOOLS" = true ]; then
-    echo "Checking development tools and required packages..."
-    
-    # Development Toolsグループのチェック
-    if ! dnf group list installed "Development Tools" &>/dev/null; then
-        echo "Installing Development Tools group..."
-        dnf groupinstall "Development Tools" -y
-    else
-        echo "Development Tools already installed."
-    fi
-    
-    # 個別パッケージのチェックとインストール
-    PACKAGES=("git" "make" "jq" "which" "python3-pip" "python3-devel" "libffi-devel" "openssl-devel")
-    for pkg in "${PACKAGES[@]}"; do
-        if ! rpm -q "$pkg" &>/dev/null; then
-            echo "Installing $pkg..."
-            dnf install -y "$pkg"
-        else
-            echo "$pkg already installed."
-        fi
-    done
-fi
 
 if [ "$INSTALL_POSTGRESQL" = true ]; then
     if ! command -v psql &>/dev/null; then
