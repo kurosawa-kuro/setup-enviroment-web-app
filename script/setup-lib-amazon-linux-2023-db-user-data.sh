@@ -61,14 +61,17 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
     if ! command -v psql &>/dev/null; then
         echo "Installing PostgreSQL..."
         
-        # PostgreSQL公式リポジトリの追加
-        dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-        
-        # AppStreamのPostgreSQLモジュールを無効化
-        dnf -qy module disable postgresql
-        
+        # PostgreSQLリポジトリの追加
+        sudo tee /etc/yum.repos.d/pgdg.repo << 'EOF'
+[pgdg15]
+name=PostgreSQL 15 for RHEL/CentOS $releasever - $basearch
+baseurl=https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-$releasever-$basearch
+enabled=1
+gpgcheck=0
+EOF
+
         # PostgreSQLのインストール
-        dnf install -y postgresql15-server postgresql15 postgresql15-contrib postgresql15-devel
+        dnf install -y postgresql15 postgresql15-server postgresql15-contrib
         
         # PostgreSQLの初期化（データディレクトリが存在しない場合のみ）
         if [ ! -d "/var/lib/pgsql/15/data/base" ]; then
@@ -98,7 +101,7 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
             echo "Database $DATABASE_DB already exists."
         fi
         
-        # パスワードの設定（既存のパスワードと異なる場合のみ）
+        # パスワードの設定
         sudo -u postgres psql -c "ALTER USER $DATABASE_USER WITH PASSWORD '$DATABASE_PASSWORD';"
     else
         echo "PostgreSQL is already installed."
