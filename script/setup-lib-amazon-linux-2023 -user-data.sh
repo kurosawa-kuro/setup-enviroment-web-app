@@ -50,7 +50,7 @@ chmod +x /usr/local/bin/docker-compose
 usermod -a -G docker ec2-user
 
 # nodejsのインストール
-# sudo dnf install -y nodejs npm
+sudo dnf install -y nodejs npm
 
 # バージョン確認
 echo "Checking installed versions..."
@@ -61,6 +61,7 @@ echo "AWS CLI version: $(aws --version)"
 echo "Ansible version: $(ansible --version | head -n1)"
 echo "Docker version: $(docker --version)"
 echo "Docker Compose version: $(docker-compose --version)"
+echo "Node version: $(node -v)"
 
 # 完了メッセージ
 echo "End: User data script execution - $(date)"
