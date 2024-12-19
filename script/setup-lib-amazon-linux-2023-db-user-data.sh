@@ -96,64 +96,6 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
     fi
 fi
 
-# pgAdminのインストール
-# pgAdminのインストール
-if [ "$INSTALL_PGADMIN" = true ]; then
-    if ! rpm -q pgadmin4-web &>/dev/null; then
-        echo "Installing pgAdmin..."
-        
-        # 必要なリポジトリの有効化
-        dnf install -y dnf-utils
-        dnf config-manager --set-enabled crb
-
-        # 必要なパッケージのインストール
-        dnf install -y python3-pip httpd python3-mod_wsgi
-
-        # PostgreSQLリポジトリからpgAdmin4をインストール
-        dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-        dnf -qy module disable postgresql
-        dnf install -y pgadmin4-web
-        
-        # Apacheの設定
-        if [ ! -f "/etc/httpd/conf.d/pgadmin4.conf" ]; then
-            cat > /etc/httpd/conf.d/pgadmin4.conf << 'EOL'
-LoadModule wsgi_module modules/mod_wsgi.so
-WSGIDaemonProcess pgadmin processes=1 threads=25
-WSGIScriptAlias /pgadmin4 /usr/lib/python3.9/site-packages/pgadmin4/pgAdmin4.wsgi
-
-<Directory /usr/lib/python3.9/site-packages/pgadmin4>
-    WSGIProcessGroup pgadmin
-    WSGIApplicationGroup %{GLOBAL}
-    Require all granted
-</Directory>
-EOL
-        fi
-
-        # SELinuxの設定
-        setsebool -P httpd_can_network_connect on
-
-        # 必要なディレクトリの作成と権限設定
-        mkdir -p /var/lib/pgadmin
-        mkdir -p /var/log/pgadmin
-        chown -R apache:apache /var/lib/pgadmin
-        chown -R apache:apache /var/log/pgadmin
-
-        # pgAdmin4の初期セットアップ
-        if [ ! -f "/var/lib/pgadmin/pgadmin4.db" ]; then
-            python3 /usr/lib/python3.9/site-packages/pgadmin4-web/setup.py
-        fi
-
-        # Apacheの起動
-        systemctl enable httpd
-        systemctl restart httpd
-        
-        echo "pgAdmin installation completed. Please access http://your-server-ip/pgadmin4 to set up initial admin account."
-    else
-        echo "pgAdmin is already installed."
-    fi
-fi
-
-
 # インストールされたバージョンの確認
 echo "Checking installed versions..."
 echo "System packages updated: $(date)"
