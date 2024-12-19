@@ -57,6 +57,7 @@ if [ "$INSTALL_DEV_TOOLS" = true ]; then
 fi
 
 # PostgreSQLのインストールと設定
+# PostgreSQLのインストールと設定
 if [ "$INSTALL_POSTGRESQL" = true ]; then
     if ! command -v psql &>/dev/null; then
         echo "Installing PostgreSQL..."
@@ -65,12 +66,12 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
         dnf install -y postgresql15-server
         
         # PostgreSQLの初期化
-        if [ ! -d "/var/lib/pgsql/15/data/base" ]; then
-            sudo postgresql-setup initdb
+        if [ ! -d "/var/lib/pgsql/data/base" ]; then
+            postgresql-setup --initdb
             
             # PostgreSQL設定の変更
-            PG_HBA_CONF="/var/lib/pgsql/15/data/pg_hba.conf"
-            POSTGRESQL_CONF="/var/lib/pgsql/15/data/postgresql.conf"
+            PG_HBA_CONF="/var/lib/pgsql/data/pg_hba.conf"
+            POSTGRESQL_CONF="/var/lib/pgsql/data/postgresql.conf"
             
             # リッスンアドレスの設定
             sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" $POSTGRESQL_CONF
