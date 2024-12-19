@@ -52,12 +52,11 @@ usermod -a -G docker ec2-user
 sudo dnf install -y nodejs npm
 
 # Go言語のインストール
-# echo "Installing Go language..."
-# GO_VERSION="1.22.0"
-# wget "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
-# rm -rf /usr/local/go
-# tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
-# rm "go${GO_VERSION}.linux-amd64.tar.gz"
+echo "Installing Go language..."
+wget "https://go.dev/dl/go1.22.0.linux-amd64.tar.gz"
+rm -rf /usr/local/go
+tar -C /usr/local -xzf "go$1.22.0.linux-amd64.tar.gz"
+rm "go1.22.0.linux-amd64.tar.gz"
 
 # # PATH設定
 # if ! grep -q "/usr/local/go/bin" /home/ec2-user/.bashrc; then
