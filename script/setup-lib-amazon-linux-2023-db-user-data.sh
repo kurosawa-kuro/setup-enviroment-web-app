@@ -60,15 +60,23 @@ fi
 if [ "$INSTALL_POSTGRESQL" = true ]; then
     if ! command -v psql &>/dev/null; then
         echo "Installing PostgreSQL..."
-        dnf install -y postgresql postgresql-server postgresql-contrib postgresql-devel
+        
+        # PostgreSQL公式リポジトリの追加
+        dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+        
+        # AppStreamのPostgreSQLモジュールを無効化
+        dnf -qy module disable postgresql
+        
+        # PostgreSQLのインストール
+        dnf install -y postgresql15-server postgresql15 postgresql15-contrib postgresql15-devel
         
         # PostgreSQLの初期化（データディレクトリが存在しない場合のみ）
-        if [ ! -d "/var/lib/pgsql/data/base" ]; then
-            postgresql-setup --initdb
+        if [ ! -d "/var/lib/pgsql/15/data/base" ]; then
+            /usr/pgsql-15/bin/postgresql-15-setup initdb
             
             # PostgreSQL設定の変更
-            PG_HBA_CONF="/var/lib/pgsql/data/pg_hba.conf"
-            POSTGRESQL_CONF="/var/lib/pgsql/data/postgresql.conf"
+            PG_HBA_CONF="/var/lib/pgsql/15/data/pg_hba.conf"
+            POSTGRESQL_CONF="/var/lib/pgsql/15/data/postgresql.conf"
             
             # リッスンアドレスの設定
             sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" $POSTGRESQL_CONF
@@ -79,8 +87,8 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
         fi
         
         # PostgreSQLの起動
-        systemctl enable postgresql
-        systemctl start postgresql
+        systemctl enable postgresql-15
+        systemctl start postgresql-15
         
         # データベースの存在確認と作成
         if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DATABASE_DB"; then
