@@ -56,8 +56,6 @@ if [ "$INSTALL_DEV_TOOLS" = true ]; then
     done
 fi
 
-# PostgreSQLのインストールと設定
-# PostgreSQLのインストールと設定
 if [ "$INSTALL_POSTGRESQL" = true ]; then
     if ! command -v psql &>/dev/null; then
         echo "Installing PostgreSQL..."
@@ -69,37 +67,64 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
         if [ ! -d "/var/lib/pgsql/data/base" ]; then
             postgresql-setup --initdb
             
-            # PostgreSQL設定の変更
+            # PostgreSQL設定ファイルのパス
             PG_HBA_CONF="/var/lib/pgsql/data/pg_hba.conf"
             POSTGRESQL_CONF="/var/lib/pgsql/data/postgresql.conf"
             
-            # リッスンアドレスの設定
-            sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" $POSTGRESQL_CONF
+            # PostgreSQLの設定変更（rootユーザーとして実行）
+            sudo -u postgres bash -c "
+                # リッスンアドレスの設定
+                sed -i \"s/#listen_addresses = 'localhost'/listen_addresses = '*'/\" $POSTGRESQL_CONF
+                
+                # pg_hba.confのバックアップ
+                cp $PG_HBA_CONF ${PG_HBA_CONF}.bak
+                
+                # 認証方式の変更とリモートアクセスの設定
+                sed -i 's/ident/md5/g' $PG_HBA_CONF
+                echo 'host    all             all             0.0.0.0/0               md5' >> $PG_HBA_CONF
+            "
             
-            # 認証方式の変更
-            sed -i 's/ident/md5/g' $PG_HBA_CONF
-            echo "host    all             all             0.0.0.0/0               md5" >> $PG_HBA_CONF
+            # 設定ファイルの権限確認
+            chown postgres:postgres $PG_HBA_CONF ${PG_HBA_CONF}.bak $POSTGRESQL_CONF
+            chmod 600 $PG_HBA_CONF ${PG_HBA_CONF}.bak $POSTGRESQL_CONF
         fi
         
-        # postgresユーザーのパスワード設定
-        echo "postgres:$DATABASE_PASSWORD" | sudo chpasswd
-
         # PostgreSQLの起動
         systemctl enable postgresql
         systemctl start postgresql
         
-        # データベースの存在確認と作成
-        if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DATABASE_DB"; then
-            echo "Creating database $DATABASE_DB..."
-            sudo -u postgres psql -c "CREATE DATABASE $DATABASE_DB;"
-        else
-            echo "Database $DATABASE_DB already exists."
-        fi
+        # データベースとユーザーの設定
+        sudo -u postgres psql -c "
+            -- パスワード設定前の待機
+            SELECT pg_sleep(1);
+            
+            -- ユーザーが存在しない場合は作成
+            DO \$\$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_user WHERE usename = '$DATABASE_USER') THEN
+                    CREATE USER $DATABASE_USER WITH PASSWORD '$DATABASE_PASSWORD';
+                ELSE
+                    ALTER USER $DATABASE_USER WITH PASSWORD '$DATABASE_PASSWORD';
+                END IF;
+            END
+            \$\$;
+            
+            -- データベースが存在しない場合は作成
+            SELECT 'CREATE DATABASE $DATABASE_DB OWNER $DATABASE_USER'
+            WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DATABASE_DB')
+            \\gexec
+            
+            -- 所有者の変更
+            ALTER DATABASE $DATABASE_DB OWNER TO $DATABASE_USER;
+        "
         
-        # PostgreSQLユーザーのパスワード設定
-        sudo -u postgres psql -c "ALTER USER $DATABASE_USER WITH PASSWORD '$DATABASE_PASSWORD';"
+        # 設定の反映のためPostgreSQLを再起動
+        systemctl restart postgresql
         
-        echo "PostgreSQL installation and setup completed."
+        echo "PostgreSQL installation and setup completed successfully."
+        echo "Database: $DATABASE_DB"
+        echo "User: $DATABASE_USER"
+        echo "Please make sure to update your security group rules if needed."
     else
         echo "PostgreSQL is already installed."
     fi
