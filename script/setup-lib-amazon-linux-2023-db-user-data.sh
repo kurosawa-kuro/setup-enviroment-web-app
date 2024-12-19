@@ -110,38 +110,48 @@ if [ "$INSTALL_PGADMIN" = true ]; then
     if ! rpm -q pgadmin4-web &>/dev/null; then
         echo "Installing pgAdmin..."
         
-        # EPELリポジトリの確認と追加
+        # EPEL 9リポジトリの追加
         if ! rpm -q epel-release &>/dev/null; then
-            dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+            dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
         fi
+        
+        # PowerToolsリポジトリの有効化（必要な依存関係のため）
+        dnf config-manager --set-enabled crb
         
         # Apacheとmod_wsgiのインストール
         if ! rpm -q httpd &>/dev/null; then
             echo "Installing Apache and mod_wsgi..."
-            dnf install -y httpd httpd-devel mod_wsgi
+            dnf install -y httpd python3-mod_wsgi
         fi
         
         # pgAdmin4のインストール
-        dnf install -y pgadmin4-web
+        dnf install -y python3-pip
+        pip3 install pgadmin4
         
-        # mod_wsgi設定の更新（ファイルが存在しない場合のみ）
-        if [ ! -f "/etc/httpd/conf.modules.d/10-wsgi.conf" ]; then
-            echo "LoadModule wsgi_module modules/mod_wsgi.so" > /etc/httpd/conf.modules.d/10-wsgi.conf
-        fi
+        # pgAdmin4の設定
+        mkdir -p /var/lib/pgadmin
+        mkdir -p /var/log/pgadmin
+        chown -R apache:apache /var/lib/pgadmin
+        chown -R apache:apache /var/log/pgadmin
         
-        # SELinuxの設定確認と調整
-        if ! getsebool httpd_can_network_connect | grep -q "on$"; then
-            setsebool -P httpd_can_network_connect on
-        fi
+        # Apacheの設定
+        cat > /etc/httpd/conf.d/pgadmin4.conf << 'EOL'
+WSGIDaemonProcess pgadmin processes=1 threads=25 python-path=/usr/local/lib/python3.9/site-packages
+WSGIScriptAlias /pgadmin4 /usr/local/lib/python3.9/site-packages/pgadmin4/pgAdmin4.wsgi
+
+<Directory /usr/local/lib/python3.9/site-packages/pgadmin4>
+    WSGIProcessGroup pgadmin
+    WSGIApplicationGroup %{GLOBAL}
+    Require all granted
+</Directory>
+EOL
         
-        # pgAdmin4-webのセットアップ（初回のみ）
-        if [ ! -f "/var/lib/pgadmin/pgadmin4.db" ]; then
-            python3 /usr/lib/python3.6/site-packages/pgadmin4-web/setup.py
-        fi
+        # SELinuxの設定
+        setsebool -P httpd_can_network_connect on
         
-        # Apacheの起動と自動起動設定
+        # Apacheの再起動
         systemctl enable httpd
-        systemctl start httpd
+        systemctl restart httpd
         
         echo "pgAdmin installation completed. Please access http://your-server-ip/pgadmin4 to set up initial admin account."
     else
