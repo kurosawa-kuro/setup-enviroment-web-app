@@ -25,6 +25,54 @@ if [ "$INSTALL_SYSTEM_UPDATES" = true ]; then
     fi
 fi
 
+# Swap設定関数
+setup_swap() {
+    if [ "$EUID" -ne 0 ]; then
+        echo "Swap設定にはroot権限が必要です"
+        exit 1
+    fi
+
+    local SWAP_FILE="/swapfile"
+    local SWAP_SIZE="4096"  # 4GB in MB
+
+    echo "Swapファイルのセットアップを開始します..."
+
+    # 既存のswapファイルの確認と削除
+    if [ -f "$SWAP_FILE" ]; then
+        echo "既存のSwapファイルを削除します..."
+        swapoff "$SWAP_FILE" 2>/dev/null || true
+        rm "$SWAP_FILE" 2>/dev/null || true
+    fi
+
+    # swapファイル作成
+    echo "${SWAP_SIZE}MBのSwapファイルを作成中..."
+    dd if=/dev/zero of="$SWAP_FILE" bs=1M count="$SWAP_SIZE" status=progress || {
+        echo "Swapファイルの作成に失敗しました"
+        exit 1
+    }
+
+    # 権限設定
+    chmod 600 "$SWAP_FILE" || {
+        echo "権限設定に失敗しました"
+        exit 1
+    }
+
+    # swap初期化と有効化
+    mkswap "$SWAP_FILE" && swapon "$SWAP_FILE" || {
+        echo "Swapの設定に失敗しました"
+        exit 1
+    }
+
+    # 永続化設定
+    if ! grep -q "$SWAP_FILE" /etc/fstab; then
+        echo "$SWAP_FILE none swap sw 0 0" >> /etc/fstab
+    fi
+
+    echo "Swap設定の確認:"
+    swapon -s
+}
+setup_swap()
+
 # 開発ツールとその他の必要なパッケージのインストール
 if [ "$INSTALL_DEV_TOOLS" = true ]; then
     echo "Checking development tools and required packages..."
