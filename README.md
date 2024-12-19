@@ -25,3 +25,12 @@ vi setup-lib-amazon-linux-2023-db-user-data.sh
 ```
 sudo ./setup-lib-amazon-linux-2023-db-user-data.sh
 ```
+
+```
+git --version
+make --version
+docker --version
+docker-compose --version
+node -v
+psql --version
+```
