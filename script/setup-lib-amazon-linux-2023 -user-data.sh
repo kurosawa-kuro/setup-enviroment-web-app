@@ -6,8 +6,8 @@ set -e
 echo "Begin: User data script execution - $(date)"
 
 # システムアップデート
-echo "Updating system packages..."
-dnf update -y
+# echo "Updating system packages..."
+# dnf update -y
 
 # 開発ツールとその他の必要なパッケージのインストール
 echo "Installing development tools and required packages..."
