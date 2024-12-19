@@ -20,5 +20,8 @@ make db-reset
 touch setup-lib-amazon-linux-2023-db-user-data.sh
 chmod u+x setup-lib-amazon-linux-2023-db-user-data.sh
 vi setup-lib-amazon-linux-2023-db-user-data.sh
+```
+
+```
 sudo ./setup-lib-amazon-linux-2023-db-user-data.sh
 ```
