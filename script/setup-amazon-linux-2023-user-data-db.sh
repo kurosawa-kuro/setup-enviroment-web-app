@@ -3,13 +3,7 @@
 # Configuration flags
 INSTALL_SYSTEM_UPDATES=false
 INSTALL_DEV_TOOLS=true
-INSTALL_AWS_CLI=false
-INSTALL_ANSIBLE=false
-INSTALL_DOCKER=false
-INSTALL_NODEJS=false
-INSTALL_GO=false
 INSTALL_POSTGRESQL=true
-INSTALL_PGADMIN=true
 
 # Database configuration
 DATABASE_DB=dev_db
