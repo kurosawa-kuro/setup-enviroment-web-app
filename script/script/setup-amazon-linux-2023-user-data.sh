@@ -8,7 +8,7 @@ declare -A INSTALL_FLAGS=(
     [ANSIBLE]=false
     [DOCKER]=true
     [NODEJS]=true
-    [GO]=false
+    [GO]=true
     [POSTGRESQL]=true
 )
 
