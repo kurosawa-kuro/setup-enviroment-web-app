@@ -61,21 +61,12 @@ if [ "$INSTALL_POSTGRESQL" = true ]; then
     if ! command -v psql &>/dev/null; then
         echo "Installing PostgreSQL..."
         
-        # PostgreSQLリポジトリの追加
-        sudo tee /etc/yum.repos.d/pgdg.repo << 'EOF'
-[pgdg15]
-name=PostgreSQL 15 for RHEL/CentOS $releasever - $basearch
-baseurl=https://download.postgresql.org/pub/repos/yum/15/redhat/rhel-$releasever-$basearch
-enabled=1
-gpgcheck=0
-EOF
-
         # PostgreSQLのインストール
-        dnf install -y postgresql15 postgresql15-server postgresql15-contrib
+        dnf install -y postgresql15-server
         
-        # PostgreSQLの初期化（データディレクトリが存在しない場合のみ）
+        # PostgreSQLの初期化
         if [ ! -d "/var/lib/pgsql/15/data/base" ]; then
-            postgresql15-setup initdb
+            sudo postgresql-setup initdb
             
             # PostgreSQL設定の変更
             PG_HBA_CONF="/var/lib/pgsql/15/data/pg_hba.conf"
@@ -89,9 +80,12 @@ EOF
             echo "host    all             all             0.0.0.0/0               md5" >> $PG_HBA_CONF
         fi
         
+        # postgresユーザーのパスワード設定
+        echo "postgres:$DATABASE_PASSWORD" | sudo chpasswd
+
         # PostgreSQLの起動
-        systemctl enable postgresql-15
-        systemctl start postgresql-15
+        systemctl enable postgresql
+        systemctl start postgresql
         
         # データベースの存在確認と作成
         if ! sudo -u postgres psql -lqt | cut -d \| -f 1 | grep -qw "$DATABASE_DB"; then
@@ -101,8 +95,10 @@ EOF
             echo "Database $DATABASE_DB already exists."
         fi
         
-        # パスワードの設定
+        # PostgreSQLユーザーのパスワード設定
         sudo -u postgres psql -c "ALTER USER $DATABASE_USER WITH PASSWORD '$DATABASE_PASSWORD';"
+        
+        echo "PostgreSQL installation and setup completed."
     else
         echo "PostgreSQL is already installed."
     fi
