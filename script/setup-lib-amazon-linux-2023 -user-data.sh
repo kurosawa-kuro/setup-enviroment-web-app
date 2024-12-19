@@ -55,7 +55,7 @@ sudo dnf install -y nodejs npm
 echo "Installing Go language..."
 wget "https://go.dev/dl/go1.22.0.linux-amd64.tar.gz"
 rm -rf /usr/local/go
-tar -C /usr/local -xzf "go$1.22.0.linux-amd64.tar.gz"
+tar -C /usr/local -xzf "go1.22.0.linux-amd64.tar.gz"
 rm "go1.22.0.linux-amd64.tar.gz"
 
 # # PATH設定
