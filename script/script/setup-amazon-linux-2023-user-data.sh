@@ -195,7 +195,13 @@ main() {
         install_docker
     fi
 
-    # その他のインストール関数も同様に呼び出し
+    if [[ "${INSTALL_FLAGS[NODEJS]}" = true ]]; then
+        install_nodejs
+    fi
+
+    if [[ "${INSTALL_FLAGS[GO]}" = true ]]; then
+        install_go
+    fi
 
     log "Installation complete. Checking versions..."
     check_installed_versions
