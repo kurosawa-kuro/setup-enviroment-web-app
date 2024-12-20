@@ -1,0 +1,35 @@
+@baseUrl = http://localhost:3001
+@contentType = application/json
+
+### ヘルスチェック
+GET {{baseUrl}}/health
+Content-Type: {{contentType}}
+
+### データベースヘルスチェック
+GET {{baseUrl}}/health-db
+Content-Type: {{contentType}}
+
+### Micropostの全件取得
+GET {{baseUrl}}/api/microposts
+Content-Type: {{contentType}}
+
+### Micropostの新規作成
+POST {{baseUrl}}/api/microposts
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="title"
+
+Test Micropost
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="image"; filename="test.jpg"
+Content-Type: image/jpeg
+
+< ./test.jpg
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### CORSプリフライトチェック
+OPTIONS {{baseUrl}}/api/microposts
+Origin: http://localhost:3000
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: Content-Type
