@@ -1,18 +1,27 @@
-include makefiles/Makefile.al2023
-include makefiles/Makefile.wsl
-include makefiles/Makefile.webapp
 
-.PHONY: setup setup-swap chmod-scripts setup-key
+.PHONY: setup setup-al2023 setup-swap chmod-scripts setup-key uninstall
 
 # デフォルトのセットアップ（Amazon Linux 2023用）
 setup: setup-al2023
+
+# Amazon Linux 2023用セットアップ
+setup-al2023: chmod-scripts setup-swap setup-key
+	@sudo ./script/setup-amazon-linux-2023.sh
 
 # 共通のターゲット
 chmod-scripts:
 	@chmod u+x script/*.sh
 
-setup-swap: chmod-scripts
-	@sudo ./script/setup-swap.sh
-
 setup-key: chmod-scripts
 	@./script/setup-key.sh
+
+# アンインストール
+uninstall: chmod-scripts
+	@sudo ./script/uninstall-amazon-linux-2023.sh
+
+# ヘルプ
+help:
+	@echo "利用可能なターゲット:"
+	@echo "  setup        - デフォルトのセットアップを実行 (Amazon Linux 2023用)"
+	@echo "  setup-key    - SSH鍵の生成"
+	@echo "  uninstall    - インストールしたコンポーネントを削除"
