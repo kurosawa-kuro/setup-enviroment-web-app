@@ -32,6 +32,7 @@ make --version
 docker --version
 docker-compose --version
 node -v
+go version
 psql --version
 ```
 
