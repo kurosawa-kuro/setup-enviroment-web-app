@@ -70,3 +70,13 @@ psql --version
 [2024-12-19 23:52:48] 3. 環境変数を反映するには、新しいシェルを開くか、sourceコマンドを実行してください
 [2024-12-19 23:52:48] Setup completed successfully
 ```
+
+```
+Host AAA
+    HostName AAA
+    User ec2-user
+    IdentityFile ~/.ssh/AAA.pem
+    StrictHostKeyChecking no
+    PubkeyAuthentication yes
+    PasswordAuthentication no
+```
