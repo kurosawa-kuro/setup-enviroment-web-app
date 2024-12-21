@@ -55,7 +55,7 @@ terraform.rc
 .aws/
 aws.json
 credentials
-config
+# config
 *.pem
 *.ppk
 
@@ -116,3 +116,4 @@ temp/
 .tmp/
 *.tmp
 *.temp
+script/config/.env.backup_*
